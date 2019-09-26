@@ -42,6 +42,9 @@ else :
 #VERSION         = "3.2 (20180831)"
 VERSION         = "1.0 (16.09.2019)" 
 
+LSDB_REFRESH_TIME = 150
+LOCK_TIMEOUT = 20
+
 class LinkDB:
     
     linkdb = {}
