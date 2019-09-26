@@ -39,9 +39,8 @@ else :
     import fcntl
 #-------------------------------------------------------------------------------
 
-LSDB_REFRESH_TIME         = 1
-LOCK_TIMEOUT              = 20
-VERSION         = "3.2 (20180831)"
+#VERSION         = "3.2 (20180831)"
+VERSION         = "1.0 (16.09.2019)" 
 
 class LinkDB:
     
@@ -133,11 +132,11 @@ class LinkDB:
                 
                 self.rtrlsa[rtr][type].append([ip,mask])
                 
-                Debug_Print ('APPEND',type, id2str(ip), id2str(mask))
+                #Debug_Print ('APPEND',type, id2str(ip), id2str(mask))
                 #linkdb.addLSA(rtr,ip, mask, type);
                 #print >> dbf, type, id2str(ip), id2str(mask)
         elif type == LSA_TYPES["NETWORK"] :
-            Debug_Print('type == network')
+            #Debug_Print('type == network')
             mask = lsa["V"]["MASK"]
             ip = lsid & mask
             
@@ -154,7 +153,7 @@ class LinkDB:
 
     def commitArea (self,area,new_dict,file) :
         if area == None :
-            Debug_Print('NONE AREA< RETURN')
+            #Debug_Print('NONE AREA< RETURN')
             return
         
         #print "commitArea:",area
@@ -166,9 +165,8 @@ class LinkDB:
         #
         for rtr in self.rtrlsa :
             for rlsa_t in self.rtrlsa[rtr]["TRANSIT"] :
-                Debug_Print('router')
                 ip, mask = rlsa_t
-                Debug_Print('RRRRRRRRRRRRRRR',"ip", id2str(ip), "mask", id2str(mask))
+                #Debug_Print('R',"ip", id2str(ip), "mask", id2str(mask))
                 #print('rlsa_t', rlsa_t)
                 new_mask = 0
                 #
@@ -182,16 +180,15 @@ class LinkDB:
                         i,m = nlsa
                        # print "i", i, "m", m
                         Debug_Print("i", id2str(i),i,'m', id2str(m), 'new_mask', id2str(new_mask))
-                        Debug_Print('ip & mask',ip & mask)
-                        Debug_Print('i & m',i & m)
-                        Debug_Print('m > new_mask',m > new_mask)
+                        #Debug_Print('ip & mask',ip & mask)
+                        #Debug_Print('i & m',i & m)
+                        #Debug_Print('m > new_mask',m > new_mask)
                         #if ip & m == i & m > new_mask :
                         if ip & m == i and m > new_mask :   #kamila
-                            Debug_Print('change')
                             new_mask = m
                 
                 rlsa_t[1] = new_mask   
-                Debug_Print('end new_mask',id2str(new_mask))  
+                #Debug_Print('end new_mask',id2str(new_mask))  
                         
         #            
         # Disable redundant STUB NETWORKS
@@ -209,10 +206,11 @@ class LinkDB:
                         # disable STUB lsa matching TRANSIT lsa
                         # within the same router
                         #print "mask "+id2str(ip)
-                        Debug_Print("ip", id2str(i),'m', m, 'mask', mask)
+                        #Debug_Print("ip", id2str(i),'m', m, 'mask', mask)
                         rlsa_s[0] = 0
                     else:
-                        Debug_Print('ELSE',"ip", id2str(i),'m', m, 'mask', mask)
+                        #Debug_Print('ELSE',"ip", id2str(i),'m', m, 'mask', mask)
+                        pass
         
         for rtr,nlsas in self.netlsa.items() :
             for nlsa in nlsas :
@@ -229,7 +227,8 @@ class LinkDB:
                         continue
                     ip,mask = rlsa
                     if mask == 0:
-                        Debug_Print('ZEROOOOOOOOOOOOOOOOO', id2str(ip), mask)
+                       # Debug_Print('ZERO', id2str(ip), mask)
+                       pass
                     self.addLink(ip, mask, type)
 
         #print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -356,6 +355,7 @@ for l in cf:
         m = m.strip()
         r = r.strip()
         m = m.lower()
+        
         if m == 'logger':
             t,a = r.split(':',1)
             t = t.strip()
@@ -373,6 +373,23 @@ for l in cf:
                 else:
                     print >> sys.stderr, 'Need to add a class for this OS '
                     exit(1)
+            else:
+                print >> sys.stderr, 'Logging is only possible into a file or a syslog'
+                exit(1)
+        elif m == 'lsdb_refresh_time':
+            t, a = l.split('=', 1)
+            a = a.strip()
+            LSDB_REFRESH_TIME = a
+        elif m == 'lock_timeout':
+            t, a = l.split('=', 1)
+            a = a.strip()
+            LOCK_TIMEOUT = a
+        elif m == 'debug':
+            pass
+        else:
+            print >> sys.stderr, 'Do not know how to process this argument : ', m
+            exit(1)
+
    
     if fsm == "domains" :
         d,a,c =  l.split()
@@ -409,18 +426,13 @@ if not os.path.exists(dbfile) :
     open(dbfile,"a").close()
 
 dbf = open(dbfile, "r+")
-#######################################################################################
 
-Creating_Old_Dict( old_dict, dbfile )
-
-#######################################################################################
 
 if platform.system() == "Windows" :
     start = time.time()
     sleep_time = 0.1
     while True :
         try :
-
             msvcrt.locking(dbf.fileno(), msvcrt.LK_NBLCK, 1)  # msvcrt.LK_NBLCK - Locks the specified bytes,1  WHY DOING THIS? BLOCKING 1 SYMBOL?
         except IOError as error:
             now = time.time()
@@ -437,6 +449,12 @@ if platform.system() == "Windows" :
             break
 else :
     fcntl.flock(dbf.fileno(), fcntl.LOCK_EX) 
+
+#######################################################################################
+
+Creating_Old_Dict( old_dict, dbf )
+
+#######################################################################################
 
 mtime = os.stat(dbfile).st_mtime  #LAST TIME UPDATED FILE
 size  = os.stat(dbfile).st_size   #size of file in bytes
@@ -458,10 +476,8 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  #do not get in th
             addr,port = agent.split(":")
         
         except ValueError :
-            #print('port 161')
             addr = agent
-            port = 161
-        Debug_Print('addr, port', addr, port)    
+            port = 161   
         g = bulkCmd(SnmpEngine(),
                 CommunityData(community),
                 UdpTransportTarget((addr, port)),
@@ -481,12 +497,11 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  #do not get in th
             
             oid = var[0][0]
             if not str(oid).startswith(oid_area_prefix) : break
-            #Debug_Print('oid', oid)
             
             area = var[0][1].prettyPrint()
             #print('area',area)
             #
-            # Prevent areas to read twice
+             # Prevent areas to read twice
             # from different SNMP agents
             #
             if area != last_area :
@@ -499,20 +514,21 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  #do not get in th
                 last_area = None
             ## lsa
             val = var[1][1]
-            Debug_Print('val', str(val))
+            #Debug_Print('val', str(val))
             last_area = area
             linkdb.addLSA(ospf.parseMsg(str(val), VERBOSE, 0)[1])
 
         linkdb.commitArea(last_area,new_dict,dbf)
 
         for keys, values in old_dict.items():
-                Debug_Print(keys)
-                Debug_Print(values)
+                #Debug_Print(keys)
+                #Debug_Print(values)
+                pass
         
-        Debug_Print('#######')
         for keys, values in new_dict.items():
-                Debug_Print(keys)
-                Debug_Print(values)
+               # Debug_Print(keys)
+               # Debug_Print(values)
+               pass
         
         What_to_Write( old_dict, new_dict, string_list )
         for s in string_list:
@@ -523,8 +539,6 @@ linkdb.load()
 (status, link, mode) = linkdb.checkLink(link_addr)
 descr = "("+",".join([domain, link, mode]) + ")"
 if status : 
-    #print "UP",descr
     print ("UP")
 else :
-    #print "DOWN",descr
     print ("DOWN")

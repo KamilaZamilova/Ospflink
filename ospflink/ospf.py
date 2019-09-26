@@ -71,8 +71,8 @@ from mutils import *
 from ospflink.debug_print import *
 #-------------------------------------------------------------------------------
 
-LSDB_REFRESH_TIME         = 150
-LOCK_TIMEOUT              = 20
+#LSDB_REFRESH_TIME         = 150
+#LOCK_TIMEOUT              = 20
 VERSION         = "1.1 (20180829)"
 
 INDENT          = "    "
