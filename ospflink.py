@@ -43,6 +43,7 @@ VERSION         = "1.1.RC1 (26.09.2019)"
 
 LSDB_REFRESH_TIME = 150
 LOCK_TIMEOUT = 20
+debug_filename = None
 
 class LinkDB:
     
@@ -69,7 +70,6 @@ class LinkDB:
                     if t == "STUB" and type == "STUB" :
                         pass
                     else :
-                        #print id2str(ip), id2str(mask), type, t
                         self.linkdb[ip,mask] = ["NETWORK","BROKEN"]
             elif type == "STUB" :
                 if mask == 0xFFFFFFFF :
@@ -90,29 +90,19 @@ class LinkDB:
         type  = lsa["H"]["T"]
         lsid  = lsa["H"]["LSID"]
         
-        Debug_Print(">>", rtr, type, lsid)
+        Debug_Print(debug_filename,">>", rtr, type, lsid)
         
         #print lsa
         if type == LSA_TYPES["ROUTER"] :
-            #print lsa['V']['LINKS']
-            #print('type == router')
             if not (rtr in self.rtrlsa) :
                 self.rtrlsa[rtr] = {}
             
             self.rtrlsa[rtr]["P2P"] = []
             self.rtrlsa[rtr]["STUB"] = []
             self.rtrlsa[rtr]["TRANSIT"] = []
-            '''
-            for keys, values in self.rtrlsa.items():
-                print(keys)
-                print(values)
-            for keys, values in lsa['V']['LINKS'].items():
-                print(keys)
-                print(values)
-            '''
+
             for (link_num,link) in lsa['V']['LINKS'].items() :
                 type = RTR_LINK_TYPE[link["T"]]
-                #print('TYPE', type)
                 if type == "VIRTUAL" : 
                     continue
                 if type == "P2P" :
@@ -133,12 +123,9 @@ class LinkDB:
                     self.rtrlsa[rtr][type] = []
                 
                 self.rtrlsa[rtr][type].append([ip,mask])
-                
-                #Debug_Print ('APPEND',type, id2str(ip), id2str(mask))
-                #linkdb.addLSA(rtr,ip, mask, type);
-                #print >> dbf, type, id2str(ip), id2str(mask)
+
         elif type == LSA_TYPES["NETWORK"] :
-            #Debug_Print('type == network')
+            #Debug_Print(debug_filename,'type == network')
             mask = lsa["V"]["MASK"]
             ip = lsid & mask
             
@@ -146,52 +133,32 @@ class LinkDB:
                 self.netlsa[rtr] = []
             
             self.netlsa[rtr].append([ip, mask])
-            #print type, ip, mask, nbrs
+            #Debug_Print(debug_filename, type, ip, mask, nbrs)
             #linkdb.addLSA(rtr, ip, mask, type);
-            #print >> dbf, type, id2str(ip), id2str(mask)
-
-        
-        #print (id2str(ip), id2str(mask), type)
+            #Debug_Print(debug_filename, dbf, type, id2str(ip), id2str(mask))
 
     def commitArea (self,area,new_dict,file) :
         if area == None :
-            #Debug_Print('NONE AREA< RETURN')
             return
-        
-        #print "commitArea:",area
-        
-        self.linkdb.clear()
 
+        self.linkdb.clear()
         #
         # FIND masks for TRANSIT lsas
         #
         for rtr in self.rtrlsa :
             for rlsa_t in self.rtrlsa[rtr]["TRANSIT"] :
                 ip, mask = rlsa_t
-                #Debug_Print('R',"ip", id2str(ip), "mask", id2str(mask))
-                #print('rlsa_t', rlsa_t)
                 new_mask = 0
                 #
                 # mask currenlty holds designated router
                 #
-                # print id2str(ip),id2str(mask)
-                # for r in self.netlsa :
-                    # print "==>",id2str(r)
                 for r in self.netlsa :
                     for nlsa in self.netlsa[r] :
                         i,m = nlsa
-                       # print "i", i, "m", m
-                        Debug_Print("i", id2str(i),i,'m', id2str(m), 'new_mask', id2str(new_mask))
-                        #Debug_Print('ip & mask',ip & mask)
-                        #Debug_Print('i & m',i & m)
-                        #Debug_Print('m > new_mask',m > new_mask)
-                        #if ip & m == i & m > new_mask :
+                        Debug_Print(debug_filename,"i", id2str(i),i,'m', id2str(m), 'new_mask', id2str(new_mask))
                         if ip & m == i and m > new_mask :   #kamila
                             new_mask = m
-                
                 rlsa_t[1] = new_mask   
-                #Debug_Print('end new_mask',id2str(new_mask))  
-                        
         #            
         # Disable redundant STUB NETWORKS
         #        
@@ -199,24 +166,18 @@ class LinkDB:
             for rlsa_s in rlsas["STUB"] :
                 ip, mask = rlsa_s
                 for rlsa_t in rlsas["TRANSIT"] :
-                    
-                    #print('IMPOSSIBLE')
-                    #print(rlsa_s)
-                    #print(rlsa_t)
                     i,m = rlsa_t
                     if ip & mask == i & m :
                         # disable STUB lsa matching TRANSIT lsa
                         # within the same router
                         #print "mask "+id2str(ip)
-                        #Debug_Print("ip", id2str(i),'m', m, 'mask', mask)
+                        #Debug_Print(debug_filename,"ip", id2str(i),'m', m, 'mask', mask)
                         rlsa_s[0] = 0
                     else:
-                        #Debug_Print('ELSE',"ip", id2str(i),'m', m, 'mask', mask)
                         pass
         
         for rtr,nlsas in self.netlsa.items() :
             for nlsa in nlsas :
-                #print nlsa
                 ip, mask = nlsa
                 self.addLink(ip,mask,"NETWORK")
         
@@ -225,39 +186,20 @@ class LinkDB:
                 for rlsa in rlsas[type] :
                     ip, mask = rlsa
                     if ip == 0 :
-                        #print "skip"
                         continue
                     ip,mask = rlsa
                     if mask == 0:
-                       # Debug_Print('ZERO', id2str(ip), mask)
                        pass
                     self.addLink(ip, mask, type)
-
-        #print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         
         file.truncate()
         for (ip,mask), link in self.linkdb.items() :
-            #print('PRINTING INTO FILE')
             print >> self.dbf, link[0], id2str(ip), id2str(mask), link[1]
             if(link[1] != 'BROKEN') :        
                 new_dict[id2str(ip)] = 'UP'
             else:
                 new_dict[id2str(ip)] = 'DOWN'
-        '''    
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        for keys, values in self.rtrlsa.items():
-                print(keys)
-                print(values)
-        print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-        for keys, values in self.netlsa.items():
-                print(keys)
-                print(values)
-        print('************************************')
-        for keys, values in self.linkdb.items():
-                print(keys)
-                print(values)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        '''
+
         self.netlsa.clear()
         self.rtrlsa.clear()
         self.linkdb.clear()
@@ -271,7 +213,6 @@ class LinkDB:
         for line in self.dbf :
             type, str_ip, str_mask, status = line.split()
             self.linkdb[str2id(str_ip),str2id(str_mask)] = [type,status]
-
 
     def checkLink (self,link_addr) :
         laddr = str2id(link_addr)
@@ -307,7 +248,6 @@ global VERBOSE
 domains = {}
 domain_binds = {}
 
-#workdir = os.path.dirname(os.path.realpath(__file__))
 parser = argparse.ArgumentParser(description='Check OSPF link in lsadb')
 parser.add_argument('--verbose', '-v', action='count', help="Be verbose")
 parser.add_argument('link_addr', help="link address to check")
@@ -317,8 +257,6 @@ args = parser.parse_args()
 VERBOSE   = args.verbose
 link_addr = args.link_addr
 ospf = ospflink.ospf.Ospf()
-
-if VERBOSE > 0: print ('yes',ospf)
 
 config_file = global_var.workdir + "/ospflink.cfg"
 cf = open(config_file, 'r')
@@ -387,7 +325,10 @@ for l in cf:
             a = a.strip()
             LOCK_TIMEOUT = a
         elif m == 'debug':
-            pass
+            if(r.startswith('\\') or r.startswith('/') ):
+                debug_filename = r
+            else:
+                debug_filename  = global_var.workdir + '/' + r
         else:
             print >> sys.stderr, 'Do not know how to process this argument : ', m
             exit(1)
@@ -410,12 +351,13 @@ for l in cf:
             agents       = domains[d]["agents"]
             community   = domains[d]["community"]
 
-            Debug_Print(mask,domain,agents,community)
+            Debug_Print(debug_filename,mask,domain,agents,community)
    
 if domain == None :
     print >> sys.stderr, "domain did not matched in the cofig file"
     exit(1)
 
+if VERBOSE > 0: Debug_Print(debug_folename,ospf)
 
 dbfile = global_var.workdir + "/data/" + domain + ".dat"
 
@@ -463,15 +405,9 @@ size  = os.stat(dbfile).st_size   #size of file in bytes
 
 linkdb = LinkDB(dbf)
 
-#print('wow')
-#print('size = ', size)
-#print('abs(mtime - time.time())',abs(mtime - time.time()))
-#print('LSDB_REFRESH_TIME',LSDB_REFRESH_TIME)
-#if(5 == 5):
-if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  #do not get in this cycle
+if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  
     oid_area_prefix = "1.3.6.1.2.1.14.4.1.1"; 
     oid_lsa_prefix = "1.3.6.1.2.1.14.4.1.8"; 
-    #dbf.truncate()
     seen_areas = {}
     for agent in agents.split(",") :
         try :
@@ -501,37 +437,24 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  #do not get in th
             if not str(oid).startswith(oid_area_prefix) : break
             
             area = var[0][1].prettyPrint()
-            #print('area',area)
             #
-             # Prevent areas to read twice
+            # Prevent areas to read twice
             # from different SNMP agents
             #
             if area != last_area :
                 if area in seen_areas :
-                    Debug_Print( "skip Area",area )
+                    Debug_Print( debug_filename,"skip Area",area )
                     continue
-                #else: print "not in seen areas", area
                 linkdb.commitArea(last_area,new_dict,dbf)
                 seen_areas[area]=1
                 last_area = None
             ## lsa
             val = var[1][1]
-            #Debug_Print('val', str(val))
             last_area = area
             linkdb.addLSA(ospf.parseMsg(str(val), VERBOSE, 0)[1])
 
         linkdb.commitArea(last_area,new_dict,dbf)
 
-        for keys, values in old_dict.items():
-                #Debug_Print(keys)
-                #Debug_Print(values)
-                pass
-        
-        for keys, values in new_dict.items():
-               # Debug_Print(keys)
-               # Debug_Print(values)
-               pass
-        
         What_to_Write( old_dict, new_dict, string_list )
         for s in string_list:
             My_Logger.Log_Write(s)
