@@ -90,7 +90,7 @@ class LinkDB:
         type  = lsa["H"]["T"]
         lsid  = lsa["H"]["LSID"]
         
-        Debug_Print(debug_filename,">>", rtr, type, lsid)
+        Debug_Print(debug_filename, rtr, type, lsid)
         
         #print lsa
         if type == LSA_TYPES["ROUTER"] :
@@ -125,7 +125,6 @@ class LinkDB:
                 self.rtrlsa[rtr][type].append([ip,mask])
 
         elif type == LSA_TYPES["NETWORK"] :
-            #Debug_Print(debug_filename,'type == network')
             mask = lsa["V"]["MASK"]
             ip = lsid & mask
             
@@ -133,7 +132,7 @@ class LinkDB:
                 self.netlsa[rtr] = []
             
             self.netlsa[rtr].append([ip, mask])
-            #Debug_Print(debug_filename, type, ip, mask, nbrs)
+            #print( type, ip, mask)
             #linkdb.addLSA(rtr, ip, mask, type);
             #Debug_Print(debug_filename, dbf, type, id2str(ip), id2str(mask))
 
@@ -155,10 +154,9 @@ class LinkDB:
                 for r in self.netlsa :
                     for nlsa in self.netlsa[r] :
                         i,m = nlsa
-                        Debug_Print(debug_filename,"i", id2str(i),i,'m', id2str(m), 'new_mask', id2str(new_mask))
                         if ip & m == i and m > new_mask :   #kamila
-                            new_mask = m
-                rlsa_t[1] = new_mask   
+                            new_mask = m 
+                rlsa_t[1] = new_mask                 
         #            
         # Disable redundant STUB NETWORKS
         #        
@@ -194,7 +192,8 @@ class LinkDB:
         
         file.truncate()
         for (ip,mask), link in self.linkdb.items() :
-            print >> self.dbf, link[0], id2str(ip), id2str(mask), link[1]
+            print(link[0], id2str(ip), id2str(mask), link[1])
+            print >> self.dbf, link[0], id2str(ip), id2str(mask), link[1] ####file 
             if(link[1] != 'BROKEN') :        
                 new_dict[id2str(ip)] = 'UP'
             else:
@@ -253,7 +252,6 @@ parser.add_argument('--verbose', '-v', action='count', help="Be verbose")
 parser.add_argument('link_addr', help="link address to check")
 args = parser.parse_args()
 
-
 VERBOSE   = args.verbose
 link_addr = args.link_addr
 ospf = ospflink.ospf.Ospf()
@@ -265,7 +263,6 @@ domain      = None
 agents       = None
 community   = None
 mask        = 0
-
 fsm = ""
 
 old_dict = {}
@@ -351,13 +348,12 @@ for l in cf:
             agents       = domains[d]["agents"]
             community   = domains[d]["community"]
 
-            Debug_Print(debug_filename,mask,domain,agents,community)
    
 if domain == None :
     print >> sys.stderr, "domain did not matched in the cofig file"
     exit(1)
 
-if VERBOSE > 0: Debug_Print(debug_folename,ospf)
+if VERBOSE > 0: Debug_Print(debug_filename,ospf)
 
 dbfile = global_var.workdir + "/data/" + domain + ".dat"
 
@@ -370,7 +366,6 @@ if not os.path.exists(dbfile) :
     open(dbfile,"a").close()
 
 dbf = open(dbfile, "r+")
-
 
 if platform.system() == "Windows" :
     start = time.time()
@@ -395,9 +390,7 @@ else :
     fcntl.flock(dbf.fileno(), fcntl.LOCK_EX) 
 
 #######################################################################################
-
 Creating_Old_Dict( old_dict, dbf )
-
 #######################################################################################
 
 mtime = os.stat(dbfile).st_mtime  #LAST TIME UPDATED FILE
@@ -411,8 +404,7 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:
     seen_areas = {}
     for agent in agents.split(",") :
         try :
-            addr,port = agent.split(":")
-        
+            addr,port = agent.split(":")        
         except ValueError :
             addr = agent
             port = 161   
