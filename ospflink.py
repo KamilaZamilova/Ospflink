@@ -30,7 +30,6 @@ from ospflink.dictionaries import *
 from ospflink.debug_print import *
 from pysnmp.hlapi import *
 
-
 import platform
 if platform.system() == "Windows" :
     import msvcrt
@@ -192,7 +191,6 @@ class LinkDB:
         
         file.truncate()
         for (ip,mask), link in self.linkdb.items() :
-            print(link[0], id2str(ip), id2str(mask), link[1])
             print >> self.dbf, link[0], id2str(ip), id2str(mask), link[1] ####file 
             if(link[1] != 'BROKEN') :        
                 new_dict[id2str(ip)] = 'UP'
