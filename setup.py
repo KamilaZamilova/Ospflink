@@ -21,7 +21,7 @@ setup(name = 'ospflink',
 
 def Copy(non_default):
     for file in non_default:
-        mfile = sys.argv[3] + '/' + file
+        mfile = dir + '/' + file
         if not os.path.isfile(mfile) :
             open(mfile,"a").close()
             x = file.rfind('.')
@@ -29,4 +29,5 @@ def Copy(non_default):
             default_file = dir + '/' + name + '.default' + '.cfg'
             shutil.copy(default_file,mfile)
 
-Copy(non_default)
+if (sys.argv[1] == 'install'):
+    Copy(non_default)
