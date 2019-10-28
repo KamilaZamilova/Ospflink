@@ -12,7 +12,7 @@ non_default = ['ospflink.cfg']
 setup(name = 'ospflink',
     version = '1.1.RC1',
     packages = ['Scripts', 'Lib', 'Lib.site-packages', 'Lib.site-packages.ospflink','Lib.site-packages.data'],
-    package_data = {'Lib.site_packages': ['data/*.dat', 'data/*.txt']},
+    package_data = {'Lib.site-packages': ['data/*.dat', 'data/*.txt']},
     url = ['https://github.com/KamilaZamilova/Ospflink'],
     data_files = ['ospflink.default.cfg']
 )
