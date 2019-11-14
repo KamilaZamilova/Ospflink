@@ -25,7 +25,7 @@
 #
 
 import string, struct, sys
-from ospflink.debug_print import *
+from debug_print import *
 
 #-------------------------------------------------------------------------------
 

@@ -1,6 +1,7 @@
 
-import global_var
-config_file = global_var.workdir + "/ospflink.cfg"
+from global_var import *
+
+config_file = root_dir + "/ospflink.cfg"
 cf = open(config_file, 'r')
 
 def Debug_Print( file_name, *args): 

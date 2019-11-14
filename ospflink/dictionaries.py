@@ -1,6 +1,6 @@
 #work with dictionaries
 import os
-from ospflink.debug_print import *
+from debug_print import *
 
 def Creating_Old_Dict( old_dict, cash_file ):
     cash_file.seek(0,0)
@@ -12,9 +12,7 @@ def Creating_Old_Dict( old_dict, cash_file ):
             old_dict[l[1]] = 'DOWN'
 
     
-def What_to_Write ( old_dict, new_dict, string_list ):
-    #for keys, values in old_dict.items():
-        #Debug_Print(keys, values)      
+def What_to_Write ( old_dict, new_dict, string_list ):     
     if not old_dict:
         return
     for keys,values in new_dict.items():

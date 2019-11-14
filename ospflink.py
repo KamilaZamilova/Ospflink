@@ -21,14 +21,17 @@
 ##     02111-1307 USA
 
 import struct, sys, argparse, string, os, os.path, time, traceback, random, re
-import ospflink.ospf
-import global_var
+
 from ospflink.mutils import *
+from ospflink.global_var import *
 from ospflink.ospf import LSA_TYPES, RTR_LINK_TYPE
 from ospflink.mysyslog import *
 from ospflink.dictionaries import *
 from ospflink.debug_print import *
 from pysnmp.hlapi import *
+from ospflink.ospf import *
+from ospflink.config_parse import * 
+from ospflink.zabbix import *
 
 import platform
 if platform.system() == "Windows" :
@@ -88,9 +91,7 @@ class LinkDB:
         rtr = lsa["H"]["ADVRTR"]
         type  = lsa["H"]["T"]
         lsid  = lsa["H"]["LSID"]
-        
-        Debug_Print(debug_filename, rtr, type, lsid)
-        
+        Debug_Print(debug_filename, rtr, 'fdkd', type, lsid)
         #print lsa
         if type == LSA_TYPES["ROUTER"] :
             if not (rtr in self.rtrlsa) :
@@ -192,6 +193,7 @@ class LinkDB:
         file.truncate()
         for (ip,mask), link in self.linkdb.items() :
             print >> self.dbf, link[0], id2str(ip), id2str(mask), link[1] ####file 
+            Debug_Print(debug_filename, rtr, link[0], id2str(ip), id2str(mask), link[1] )
             if(link[1] != 'BROKEN') :        
                 new_dict[id2str(ip)] = 'UP'
             else:
@@ -241,10 +243,10 @@ class LinkDB:
 ################################################################################
 
 global VERBOSE
-
+'''
 domains = {}
 domain_binds = {}
-
+'''
 parser = argparse.ArgumentParser(description='Check OSPF link in lsadb')
 parser.add_argument('--verbose', '-v', action='count', help="Be verbose")
 parser.add_argument('link_addr', help="link address to check")
@@ -252,21 +254,18 @@ args = parser.parse_args()
 
 VERBOSE   = args.verbose
 link_addr = args.link_addr
-ospf = ospflink.ospf.Ospf()
-
-config_file = global_var.workdir + "/ospflink.cfg"
-cf = open(config_file, 'r')
-
-domain      = None
-agents       = None
-community   = None
-mask        = 0
-fsm = ""
+ospf = Ospf()
 
 old_dict = {}
 new_dict = {}
 string_list = []
+mask        = 0
+domain      = None
+agents       = None
+community   = None
+mask        = 0
 
+'''
 for l in cf:
     l = l.lstrip()
     if re.search("^\s*#",l) : 
@@ -299,7 +298,7 @@ for l in cf:
                 if(a.startswith('\\') or a.startswith('/') ):
                     My_Logger = File_Logger(a)
                 else:
-                    My_Logger = File_Logger(global_var.workdir + '/' + a)
+                    My_Logger = File_Logger(data_dir + '/' + a)
             elif(t == 'syslog'):
                 if (platform.system() == "Windows" ):
                     My_Logger = Win_Logger(a)
@@ -323,7 +322,12 @@ for l in cf:
             if(r.startswith('\\') or r.startswith('/') ):
                 debug_filename = r
             else:
-                debug_filename  = global_var.workdir + '/' + r
+                debug_filename  = data_dir + '/' + r
+        elif m == 'archive':
+            if(r.startswith('\\') or r.startswith('/') ):
+                debug_filename = r
+            else:
+                archive_filename  = data_dir + '/' + r
         else:
             print >> sys.stderr, 'Do not know how to process this argument : ', m
             exit(1)
@@ -350,10 +354,25 @@ for l in cf:
 if domain == None :
     print >> sys.stderr, "domain did not matched in the cofig file"
     exit(1)
+'''
+mask, domain, agents, community, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(link_addr, mask, domain, agents, community) 
+if domain == None :
+    print >> sys.stderr, "domain did not matched in the cofig file"
+    exit(1)
+
+if syslog_platform != None:
+    if syslog_platform == 'win':
+        My_Logger = Win_Logger(sp)
+        print('win')
+    else:
+        My_Logger = Lin_Logger(sp)
+
+if syslog_filename != None:
+    My_Logger = File_Logger(syslog_filename)
 
 if VERBOSE > 0: Debug_Print(debug_filename,ospf)
 
-dbfile = global_var.workdir + "/data/" + domain + ".dat"
+dbfile = data_dir + '\\' + domain + ".dat"
 
 mtime = 0
 size = 0
@@ -445,9 +464,10 @@ if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:
 
         linkdb.commitArea(last_area,new_dict,dbf)
 
-        What_to_Write( old_dict, new_dict, string_list )
-        for s in string_list:
-            My_Logger.Log_Write(s)
+        What_to_Write(old_dict, new_dict, string_list )
+        if (syslog_platform != None or syslog_filename != None):
+            for s in string_list:
+                My_Logger.Log_Write(s)
 linkdb.load()
     
 
@@ -457,3 +477,4 @@ if status :
     print ("UP")
 else :
     print ("DOWN")
+Cash_Check (dbf, zabbix_filename)

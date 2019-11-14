@@ -68,7 +68,7 @@
 
 import struct, sys, string, traceback
 from mutils import *
-from ospflink.debug_print import *
+from debug_print import *
 #-------------------------------------------------------------------------------
 
 #LSDB_REFRESH_TIME         = 150
@@ -522,17 +522,14 @@ def parseOspfLsAck(msg, verbose=1, level=0):
 class OspfExc(Exception): pass
 
 class Ospf:
-    #print('klass')
     _version   = 2
     rv = {}
     lsadb = {}
 
     def __init__(self):
-        #print('in ospf class in init')
         pass
 
     def parseMsg(self, msg, verbose=1, level=0):
-        #print('in parse message')
         # try:
         rv = parseOspfLsas(msg, verbose, level)
         # except Exception, exc:
@@ -540,7 +537,6 @@ class Ospf:
             # tb = stk[0]
             # error("[ *** exception parsing LSA ***]\n")
             # error("### File: %s, Line: %s, Exc: %s \n " % (tb[0], tb[1], exc ))
-        #print('rv', rv)
         return rv
  
 ################################################################################
