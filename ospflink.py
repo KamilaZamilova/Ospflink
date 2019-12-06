@@ -249,232 +249,167 @@ domain_binds = {}
 '''
 parser = argparse.ArgumentParser(description='Check OSPF link in lsadb')
 parser.add_argument('--verbose', '-v', action='count', help="Be verbose")
-parser.add_argument('link_addr', help="link address to check")
+#parser.add_argument('link_addr', help="link address to check")
+parser.add_argument('param', help="link address to check or discovery mode")
 args = parser.parse_args()
 
 VERBOSE   = args.verbose
-link_addr = args.link_addr
-ospf = Ospf()
+if VERBOSE > 0: Debug_Print(debug_filename,ospf)
+if (args.param == 'discovery'):
+    mode = args.param
+    link_addr = None
 
+else:
+    mode = 'check_link'
+    link_addr = args.param
+
+
+print('mode = ', mode)
+ospf = Ospf()
 old_dict = {}
 new_dict = {}
 string_list = []
 mask        = 0
-domain      = None
-agents       = None
-community   = None
-mask        = 0
 
-'''
-for l in cf:
-    l = l.lstrip()
-    if re.search("^\s*#",l) : 
-        continue
-    if re.search("^\s*$",l) : 
-        continue
-    if l.startswith("[common]") :
-        fsm = "common"
-        continue
-    if l.startswith("[domains]") :
-        fsm = "domains"
-        continue
-    if l.startswith("[domain_binds]") :
-        if fsm != "domains" :
-            print >> sys.stderr, "section [domains] should be first in the cofig file"
-            exit(1)                
-        fsm = "domain_binds"
-        continue
-    if fsm == "common":
-        m, r = l.split('=', 1)
-        m = m.strip()
-        r = r.strip()
-        m = m.lower()
-        
-        if m == 'logger':
-            t,a = r.split(':',1)
-            t = t.strip()
-            a = a.strip()
-            if(t == 'file'):
-                if(a.startswith('\\') or a.startswith('/') ):
-                    My_Logger = File_Logger(a)
-                else:
-                    My_Logger = File_Logger(data_dir + '/' + a)
-            elif(t == 'syslog'):
-                if (platform.system() == "Windows" ):
-                    My_Logger = Win_Logger(a)
-                elif (platform.system() == "Linux" ):
-                    My_Logger = Lin_Logger(a)
-                else:
-                    print >> sys.stderr, 'Need to add a class for this OS '
-                    exit(1)
-            else:
-                print >> sys.stderr, 'Logging is only possible into a file or a syslog'
-                exit(1)
-        elif m == 'lsdb_refresh_time':
-            t, a = l.split('=', 1)
-            a = a.strip()
-            LSDB_REFRESH_TIME = a
-        elif m == 'lock_timeout':
-            t, a = l.split('=', 1)
-            a = a.strip()
-            LOCK_TIMEOUT = a
-        elif m == 'debug':
-            if(r.startswith('\\') or r.startswith('/') ):
-                debug_filename = r
-            else:
-                debug_filename  = data_dir + '/' + r
-        elif m == 'archive':
-            if(r.startswith('\\') or r.startswith('/') ):
-                debug_filename = r
-            else:
-                archive_filename  = data_dir + '/' + r
+mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(mode, link_addr, mask) 
+print('in ospflink', mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename)
+if (len(domains) == 0) :
+    print >> sys.stderr, "domain did not matched in the cofig file"
+    exit(1)
+
+if mode == 'check_link':
+    if syslog_platform != None:
+        if syslog_platform == 'win':
+            My_Logger = Win_Logger(sp)
+            print('win')
         else:
-            print >> sys.stderr, 'Do not know how to process this argument : ', m
-            exit(1)
+            My_Logger = Lin_Logger(sp)
 
-   
-    if fsm == "domains" :
-        d,a,c =  l.split()
-        domains[d]              = {}
-        domains[d]["agents"]     = a
-        domains[d]["community"] = c
-        continue
-    if fsm == "domain_binds" :
-        p,d = l.split()
-        n, m_l = p.split("/")
-        m = plen2mask(int(m_l))
+    if syslog_filename != None:
+        My_Logger = File_Logger(syslog_filename)
 
-        if str2id(link_addr) & m == str2id(n) & m  and m >= mask :
-            mask        = m
-            domain      = d
-            agents       = domains[d]["agents"]
-            community   = domains[d]["community"]
+lock_file = data_dir + '\\' + 'lock_file' + ".dat"
+if not os.path.exists(lock_file) :
+        open(lock_file,"a").close()
+lck = open(lock_file, "r+")
 
-   
-if domain == None :
-    print >> sys.stderr, "domain did not matched in the cofig file"
-    exit(1)
-'''
-mask, domain, agents, community, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(link_addr, mask, domain, agents, community) 
-if domain == None :
-    print >> sys.stderr, "domain did not matched in the cofig file"
-    exit(1)
-
-if syslog_platform != None:
-    if syslog_platform == 'win':
-        My_Logger = Win_Logger(sp)
-        print('win')
-    else:
-        My_Logger = Lin_Logger(sp)
-
-if syslog_filename != None:
-    My_Logger = File_Logger(syslog_filename)
-
-if VERBOSE > 0: Debug_Print(debug_filename,ospf)
-
-dbfile = data_dir + '\\' + domain + ".dat"
-
-mtime = 0
-size = 0
-dbf = None
-
-if not os.path.exists(dbfile) :
-
-    open(dbfile,"a").close()
-
-dbf = open(dbfile, "r+")
-
-if platform.system() == "Windows" :
-    start = time.time()
-    sleep_time = 0.1
-    while True :
-        try :
-            msvcrt.locking(dbf.fileno(), msvcrt.LK_NBLCK, 1)  # msvcrt.LK_NBLCK - Locks the specified bytes,1  WHY DOING THIS? BLOCKING 1 SYMBOL?
-        except IOError as error:
-            now = time.time()
-            #delay = now - start
-            if now - start > LOCK_TIMEOUT :
-                print >> sys.stderr, "can not lock " + dbfile
-                exit(1)
-            sleep_time = sleep_time*(1+random.random())
-            if now + sleep_time - start > LOCK_TIMEOUT :
-                sleep_time = start + LOCK_TIMEOUT + 0.1 - now
-            #print "==> %0.2f, %0.2f" % (sleep_time, now-start)
-            time.sleep(sleep_time)
-        else :
-            break
-else :
-    fcntl.flock(dbf.fileno(), fcntl.LOCK_EX) 
-
-#######################################################################################
-Creating_Old_Dict( old_dict, dbf )
-#######################################################################################
-
-mtime = os.stat(dbfile).st_mtime  #LAST TIME UPDATED FILE
-size  = os.stat(dbfile).st_size   #size of file in bytes
-
-linkdb = LinkDB(dbf)
-
-if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  
-    oid_area_prefix = "1.3.6.1.2.1.14.4.1.1"; 
-    oid_lsa_prefix = "1.3.6.1.2.1.14.4.1.8"; 
-    seen_areas = {}
-    for agent in agents.split(",") :
-        try :
-            addr,port = agent.split(":")        
-        except ValueError :
-            addr = agent
-            port = 161   
-        g = bulkCmd(SnmpEngine(),
-                CommunityData(community),
-                UdpTransportTarget((addr, port)),
-                ContextData(),
-                0, 25,
-                ObjectType(ObjectIdentity(oid_area_prefix)),
-                ObjectType(ObjectIdentity(oid_lsa_prefix)),
-            )
-        
-        last_area = None
+#################################################
+#################################################
+#################################################
+for domain, agent_comm in domains.items() :
+    print('DOMAIN', domain)
+    print('AGENT COMMUNITY', agent_comm)
+    #blocking file, only 1 process working now
+    if platform.system() == "Windows" :
+        start = time.time()
+        sleep_time = 0.05
         while True :
-            (e, es, ei, var) = next(g) 
-            if e :
-                print >> sys.stderr, "Error quering agent", agent
-                print >> sys.stderr, e
-                exit(1)
-            
-            oid = var[0][0]
-            if not str(oid).startswith(oid_area_prefix) : break
-            
-            area = var[0][1].prettyPrint()
-            #
-            # Prevent areas to read twice
-            # from different SNMP agents
-            #
-            if area != last_area :
-                if area in seen_areas :
-                    Debug_Print( debug_filename,"skip Area",area )
-                    continue
-                linkdb.commitArea(last_area,new_dict,dbf)
-                seen_areas[area]=1
-                last_area = None
-            ## lsa
-            val = var[1][1]
-            last_area = area
-            linkdb.addLSA(ospf.parseMsg(str(val), VERBOSE, 0)[1])
+            try :
+                print('block')
+                msvcrt.locking(lck.fileno(), msvcrt.LK_NBLCK, 1)
+                print('do it')
+            except IOError as error:
+                now = time.time()
+                #delay = now - start
+                if now - start > LOCK_TIMEOUT :
+                    print('strt', start)
+                    print('now', now)
+                    print('now - start', now - start)
+                    print('timeout', LOCK_TIMEOUT)
+                    print >> sys.stderr, "can not lock " + lock_file
+                    exit(1)
+                sleep_time = sleep_time*(1+random.random())
+                if now + sleep_time - start > LOCK_TIMEOUT :
+                    sleep_time = start + LOCK_TIMEOUT + 0.1 - now
+                # print "==> %0.2f, %0.2f" % (sleep_time, now-start)
+                time.sleep(sleep_time)
+            else :
+                print('all')
+                break
+    else :
+        fcntl.flock(lck.fileno(), fcntl.LOCK_EX) 
 
-        linkdb.commitArea(last_area,new_dict,dbf)
+    dbfile = data_dir + '\\' + domain + ".dat"
 
-        What_to_Write(old_dict, new_dict, string_list )
-        if (syslog_platform != None or syslog_filename != None):
-            for s in string_list:
-                My_Logger.Log_Write(s)
-linkdb.load()
+    mtime = 0
+    size = 0
+    dbf = None
+
+    if not os.path.exists(dbfile) :
+        open(dbfile,"a").close()
+
+    dbf = open(dbfile, "r+")
+    Creating_Old_Dict( old_dict, dbf )
+    mtime = os.stat(dbfile).st_mtime  #LAST TIME UPDATED FILE
+    size  = os.stat(dbfile).st_size   #size of file in bytes
+
+    linkdb = LinkDB(dbf)
+
+    if abs(mtime - time.time()) > LSDB_REFRESH_TIME or size == 0:  
+        oid_area_prefix = "1.3.6.1.2.1.14.4.1.1"; 
+        oid_lsa_prefix = "1.3.6.1.2.1.14.4.1.8"; 
+        seen_areas = {}
+        for agent in agent_comm['agents'].split(",") :
+            print('agent', agent)
+            print('comm', agent_comm['community'] )
+            try :
+                addr,port = agent.split(":") 
+                print('addr', addr)       
+            except ValueError :
+                addr = agent
+                port = 161   
+            g = bulkCmd(SnmpEngine(),
+                    CommunityData(agent_comm['community']),
+                    UdpTransportTarget((addr, port)),
+                    ContextData(),
+                    0, 25,
+                    ObjectType(ObjectIdentity(oid_area_prefix)),
+                    ObjectType(ObjectIdentity(oid_lsa_prefix)),
+                )
+        
+            last_area = None
+            while True :
+                (e, es, ei, var) = next(g) 
+                if e :
+                    print >> sys.stderr, "Error quering agent", agent
+                    print >> sys.stderr, e
+                    exit(1)
+            
+                oid = var[0][0]
+                if not str(oid).startswith(oid_area_prefix) : break
+            
+                area = var[0][1].prettyPrint()
+                #
+                # Prevent areas to read twice
+                # from different SNMP agents
+                #
+                if area != last_area :
+                    if area in seen_areas :
+                        Debug_Print( debug_filename,"skip Area",area )
+                        continue
+                    linkdb.commitArea(last_area,new_dict,dbf)
+                    seen_areas[area]=1
+                    last_area = None
+                ## lsa
+                val = var[1][1]
+                last_area = area
+                linkdb.addLSA(ospf.parseMsg(str(val), VERBOSE, 0)[1])
+
+            linkdb.commitArea(last_area,new_dict,dbf)
+
+            What_to_Write(old_dict, new_dict, string_list )
+            if (syslog_platform != None or syslog_filename != None):
+                for s in string_list:
+                    My_Logger.Log_Write(s)
+    linkdb.load()
     
-
-(status, link, mode) = linkdb.checkLink(link_addr)
-descr = "("+",".join([domain, link, mode]) + ")"
-if status : 
-    print ("UP")
-else :
-    print ("DOWN")
-Cash_Check (dbf, zabbix_filename)
+    if(mode == 'check_link'):
+        (status, link, mode) = linkdb.checkLink(link_addr)
+        descr = "("+",".join([domain, link, mode]) + ")"
+        if status : 
+            print ("UP")
+        else :
+            print ("DOWN")
+    elif(mode == 'discovery'):
+        Cash_Check (dbf, zabbix_filename)
+ 

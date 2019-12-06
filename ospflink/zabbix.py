@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 
 def Cash_Check (dbf, zabbix_filename):
+    print('IN CASH CGECKKKKKKKKK')
     router_id = '0.0.0.0'
     delete_list = []
     add_list = {}
