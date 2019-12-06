@@ -255,14 +255,13 @@ args = parser.parse_args()
 
 VERBOSE   = args.verbose
 if VERBOSE > 0: Debug_Print(debug_filename,ospf)
+
+mode = 'check_link'
+link_addr = args.param
+
 if (args.param == 'discovery'):
     mode = args.param
     link_addr = None
-
-else:
-    mode = 'check_link'
-    link_addr = args.param
-
 
 print('mode = ', mode)
 ospf = Ospf()
@@ -288,7 +287,7 @@ if mode == 'check_link':
     if syslog_filename != None:
         My_Logger = File_Logger(syslog_filename)
 
-lock_file = data_dir + '\\' + 'lock_file' + ".dat"
+lock_file = data_dir + '/common.lock'
 if not os.path.exists(lock_file) :
         open(lock_file,"a").close()
 lck = open(lock_file, "r+")
