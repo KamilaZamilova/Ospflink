@@ -44,10 +44,6 @@ def lockfile (fh) :
                 now = time.time()
                 #delay = now - start
                 if now - start > LOCK_TIMEOUT :
-                    print('strt', start)
-                    print('now', now)
-                    print('now - start', now - start)
-                    print('timeout', LOCK_TIMEOUT)
                     print >> sys.stderr, "can not lock the file!"
                     exit(1)
 
@@ -125,8 +121,6 @@ lockfile(lck)
 #################################################
 #################################################
 for domain, agent_comm in domains.items() :
-    print('DOMAIN', domain)
-    print('AGENT COMMUNITY', agent_comm)
 
     dbfile = data_dir + '\\' + domain + ".dat"
 
@@ -149,8 +143,6 @@ for domain, agent_comm in domains.items() :
         oid_lsa_prefix = "1.3.6.1.2.1.14.4.1.8"; 
         seen_areas = {}
         for agent in agent_comm['agents'].split(",") :
-            print('agent', agent)
-            print('comm', agent_comm['community'] )
             try :
                 addr,port = agent.split(":")       
             except ValueError :
