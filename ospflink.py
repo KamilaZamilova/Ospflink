@@ -39,9 +39,7 @@ def lockfile (fh) :
         sleep_time = 0.05
         while True :
             try :
-                print('block')
                 msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
-                print('do it')
             except IOError as error:
                 now = time.time()
                 #delay = now - start
@@ -59,7 +57,6 @@ def lockfile (fh) :
                 # print "==> %0.2f, %0.2f" % (sleep_time, now-start)
                 time.sleep(sleep_time)
             else :
-                print('all')
                 break
     else :
         fcntl.flock(fh.fileno(), fcntl.LOCK_EX) 
@@ -80,10 +77,7 @@ LOCK_TIMEOUT = 20
 debug_filename = None
 
 global VERBOSE
-'''
-domains = {}
-domain_binds = {}
-'''
+
 parser = argparse.ArgumentParser(description='Check OSPF link in lsadb')
 parser.add_argument('--verbose', '-v', action='count', help="Be verbose")
 #parser.add_argument('link_addr', help="link address to check")
@@ -100,29 +94,28 @@ if (args.param == 'discovery'):
     mode = args.param
     link_addr = None
 
-print('mode = ', mode)
 ospf = Ospf()
 old_dict = {}
 new_dict = {}
 string_list = []
 mask        = 0
 
-mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(mode, link_addr, mask) 
-print('in ospflink', mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename)
+LSDB_REFRESH_TIME, LOCK_TIMEOUT, mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(mode, link_addr, mask) 
+
 if (len(domains) == 0) :
     print >> sys.stderr, "domain did not matched in the cofig file"
     exit(1)
 
-if mode == 'check_link':
-    if syslog_platform != None:
-        if syslog_platform == 'win':
-            My_Logger = Win_Logger(sp)
-            print('win')
-        else:
-            My_Logger = Lin_Logger(sp)
 
-    if syslog_filename != None:
-        My_Logger = File_Logger(syslog_filename)
+if syslog_platform != None:
+    if syslog_platform == 'win':
+        My_Logger = Win_Logger(sp)
+
+    else:
+        My_Logger = Lin_Logger(sp)
+
+if syslog_filename != None:
+    My_Logger = File_Logger(syslog_filename)
 
 lock_file = data_dir + '/common.lock'
 lck = open(lock_file, "a")
@@ -159,8 +152,7 @@ for domain, agent_comm in domains.items() :
             print('agent', agent)
             print('comm', agent_comm['community'] )
             try :
-                addr,port = agent.split(":") 
-                print('addr', addr)       
+                addr,port = agent.split(":")       
             except ValueError :
                 addr = agent
                 port = 161   
@@ -179,7 +171,7 @@ for domain, agent_comm in domains.items() :
                 if e :
                     print >> sys.stderr, "Error quering agent", agent
                     print >> sys.stderr, e
-                    exit(1)
+                    #exit(1)
             
                 oid = var[0][0]
                 if not str(oid).startswith(oid_area_prefix) : break
@@ -217,5 +209,5 @@ for domain, agent_comm in domains.items() :
         else :
             print ("DOWN")
     elif(mode == 'discovery'):
-        Cash_Check (dbf, zabbix_filename)
+        Cash_Check (dbf, zabbix_filename,domain)
 

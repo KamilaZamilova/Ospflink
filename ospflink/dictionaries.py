@@ -5,7 +5,6 @@ from debug_print import *
 def Creating_Old_Dict( old_dict, cash_file ):
     cash_file.seek(0,0)
     for line in cash_file:
-        print ">>"+line+"<<"
         l = line.split()
         if(l[len(l) - 1] != 'BROKEN'):
             old_dict[l[1]] = 'UP'
