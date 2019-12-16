@@ -96,6 +96,7 @@ new_dict = {}
 string_list = []
 mask        = 0
 
+
 LSDB_REFRESH_TIME, LOCK_TIMEOUT, mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(mode, link_addr, mask) 
 
 if (len(domains) == 0) :
@@ -193,6 +194,7 @@ for domain, agent_comm in domains.items() :
                     My_Logger.Log_Write(s)
     linkdb.load()
     
+
     if(mode == 'check_link'):
         (status, link, mode) = linkdb.checkLink(link_addr)
         descr = "("+",".join([domain, link, mode]) + ")"
@@ -202,4 +204,11 @@ for domain, agent_comm in domains.items() :
             print ("DOWN")
     elif(mode == 'discovery'):
         Cash_Check (dbf, zabbix_filename,domain)
+
+if(mode == 'discovery'):
+    jsnfile = data_dir + '\\' + "json.json"
+    if not os.path.exists(jsnfile) :
+        open(jsnfile,"a").close()
+    jsn = open(jsnfile, "r+")
+    Json_Fill(jsn, zabbix_filename)
 
