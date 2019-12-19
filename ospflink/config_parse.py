@@ -5,25 +5,16 @@ import platform
 
 config_file = root_dir + "/ospflink.cfg"
 cf = open(config_file, 'r')
-'''
-fsm = ""
 
-domains = {}
-domain_binds = {}
-syslog_filename = None
-'''
 def Config_parse(mode, link_addr, mask):
     syslog_filename = None
     syslog_platform = None
     domains = {}
-    domain_binds = {}
     #agents       = None
     #community   = None
-    domain_agent_community = {}
-    agent_community = []
-    my_domains = []
     fsm = ""
     sp = ""
+    archive_filename = ''
     for l in cf:
         l = l.lstrip()
         if re.search("^\s*#",l) : 
@@ -102,7 +93,6 @@ def Config_parse(mode, link_addr, mask):
             domains[d]              = {}
             domains[d]["agents"]     = a
             domains[d]["community"] = c
-            print('domains in discovery', domains)
 
             continue
         if fsm == "domain_binds" :
@@ -116,8 +106,6 @@ def Config_parse(mode, link_addr, mask):
                     for keys, values in domains.items():
                         if(keys != d):
                             domains.pop(keys)
-                            print('domains in check', domains)
                     fsm = ''
-    print('DOMAINS', domains)
-    return mask, domains, syslog_platform, sp, syslog_filename, debug_filename, archive_filename
+    return int(LSDB_REFRESH_TIME), int(LOCK_TIMEOUT), mask, domains, syslog_platform, sp, syslog_filename, debug_filename, archive_filename
     cf.close()
