@@ -81,7 +81,7 @@ parser.add_argument('param', help="link address to check or discovery mode")
 args = parser.parse_args()
 
 VERBOSE   = args.verbose
-if VERBOSE > 0: Debug_Print(debug_filename,ospf)
+if VERBOSE > 0: Debug_Print(debug_filename)
 
 mode = 'check_link'
 link_addr = args.param
@@ -123,7 +123,7 @@ lockfile(lck)
 #################################################
 for domain, agent_comm in domains.items() :
 
-    dbfile = data_dir + '\\' + domain + ".dat"
+    dbfile = data_dir + '/' + domain + ".dat"
 
     mtime = 0
     size = 0
@@ -206,7 +206,7 @@ for domain, agent_comm in domains.items() :
         Cash_Check (dbf, zabbix_filename,domain)
 
 if(mode == 'discovery'):
-    jsnfile = data_dir + '\\' + "json.json"
+    jsnfile = data_dir + '/' + "json.json"
     if not os.path.exists(jsnfile) :
         open(jsnfile,"a").close()
     jsn = open(jsnfile, "w")
