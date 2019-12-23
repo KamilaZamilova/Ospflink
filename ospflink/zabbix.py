@@ -73,7 +73,7 @@ def Json_Fill(zabbix_filename):
     for line in zabbix:
        l = line.split()
        s = {}
-       s["#USER"] = l[0]
+       s["{#USER}"] = l[0]
        list_of_objects.append(s)
     data = {}
     data["data"] = list_of_objects
