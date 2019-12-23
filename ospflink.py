@@ -206,9 +206,4 @@ for domain, agent_comm in domains.items() :
         Cash_Check (dbf, zabbix_filename,domain)
 
 if(mode == 'discovery'):
-    jsnfile = data_dir + '/' + "json.json"
-    if not os.path.exists(jsnfile) :
-        open(jsnfile,"a").close()
-    jsn = open(jsnfile, "w")
-    Json_Fill(jsn, zabbix_filename)
-
+    Json_Fill(zabbix_filename)

@@ -67,7 +67,7 @@ def Add_Into_Zabbix( file, keys, router_id, values, dom):
     s = s1 + '   ' + datetime.strftime(datetime.now(), "%d.%m.%Y_%H:%M:%S") + '   ' + dom
     file.write (s + '\n')
 
-def Json_Fill(jsn, zabbix_filename):
+def Json_Fill(zabbix_filename):
     zabbix = open(zabbix_filename, 'r')
     list_of_objects = []
     for line in zabbix:
@@ -77,6 +77,5 @@ def Json_Fill(jsn, zabbix_filename):
        list_of_objects.append(s)
     data = {}
     data["data"] = list_of_objects
-    json.dump(data, jsn)
-    jsn.close()
+    print(json.dumps(data))
     zabbix.close()
