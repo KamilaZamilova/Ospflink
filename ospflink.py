@@ -95,7 +95,7 @@ old_dict = {}
 new_dict = {}
 string_list = []
 mask        = 0
-
+My_Logger = []
 
 LSDB_REFRESH_TIME, LOCK_TIMEOUT, mask, domains, syslog_platform, sp, syslog_filename, debug_filename, zabbix_filename = Config_parse(mode, link_addr, mask) 
 
@@ -106,13 +106,13 @@ if (len(domains) == 0) :
 
 if syslog_platform != None:
     if syslog_platform == 'win':
-        My_Logger = Win_Logger(sp)
+        My_Logger.add(Win_Logger(sp))
 
     else:
-        My_Logger = Lin_Logger(sp)
+        My_Logger.add(Lin_Logger(sp))
 
 if syslog_filename != None:
-    My_Logger = File_Logger(syslog_filename)
+    My_Logger.add(File_Logger(syslog_filename))
 
 lock_file = data_dir + '/common.lock'
 lck = open(lock_file, "a")
@@ -189,9 +189,10 @@ for domain, agent_comm in domains.items() :
             linkdb.commitArea(last_area,new_dict,dbf)
 
             What_to_Write(old_dict, new_dict, string_list )
-            if (syslog_platform != None or syslog_filename != None):
-                for s in string_list:
-                    My_Logger.Log_Write(s)
+            if (My_Logger):
+                for logger in My_Logger:
+                    for s in string_list:
+                        logger.Log_Write(s)
     linkdb.load()
     
 
