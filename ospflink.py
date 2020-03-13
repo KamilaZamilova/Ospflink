@@ -106,13 +106,13 @@ if (len(domains) == 0) :
 
 if syslog_platform != None:
     if syslog_platform == 'win':
-        My_Logger.add(Win_Logger(sp))
+        My_Logger.append(Win_Logger(sp))
 
     else:
-        My_Logger.add(Lin_Logger(sp))
+        My_Logger.append(Lin_Logger(sp))
 
 if syslog_filename != None:
-    My_Logger.add(File_Logger(syslog_filename))
+    My_Logger.append(File_Logger(syslog_filename))
 
 lock_file = data_dir + '/common.lock'
 lck = open(lock_file, "a")
